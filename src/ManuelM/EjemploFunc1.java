@@ -6,24 +6,23 @@ import java.util.concurrent.CyclicBarrier;
 
 public class EjemploFunc1 {
 	static CyclicBarrier barrera1;
-	static boolean[] terminado;
 	
 	public void ejemploEspera(int numHilos, int numHilosAEsperar) {
 		barrera1 = new CyclicBarrier(numHilosAEsperar);
 		ArrayList<Thread> threadHandle = new ArrayList<Thread>();
-		
-		//Array para guardar que hilos han acabado
-		terminado = new boolean[numHilos];
+
 		
 		//Creamos los hilos
 		for(int i = 0; i < numHilos; i++)
-			threadHandle.add(new hilo(i));
+			threadHandle.add(new hilo(i+1));
 		
 		System.out.println();
+		
 		
 		//Los lanzamos, sin embargo, debido a la barrera estos pararan hasta que lleguen todos al mismo punto.
 		for(Thread i : threadHandle)
 			i.start();
+		
 		
 		//Si el programa no ha terminado a los 10 segundos, interumpimos uno de los hilos
 		//Haciendo que se rompa la barrera, permitiendo que continuen los hilos.
@@ -31,32 +30,23 @@ public class EjemploFunc1 {
 			public void run() {
 				try {
 					sleep(10000);
+					System.out.println("\nTiempo de Espera agotado");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 				
-				//Busco un hilo que no haya acabado, y lo interumpo.
-				for(int i = 0; i < numHilos; i++)
-					if(terminado[i] == false)
-						threadHandle.get(i).interrupt();
+				//Reseteo la barrera, haciendo que los hilos esperando salten la barrera con la excepción BrokenBarrier
+				barrera1.reset();
 			}
 		};
 		t.start();
 		
 		
-		//Se espera un tiempo a que acaben los hilos para insertar un espaciado aestetico
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-		}
-		System.out.println();
-		
 		
 		//Esperamos a que todos terminen antes de cerrar el hilo principal
 		//Lo que ocurre una vez se muestra el error de cyclicBarrier
 		try {
-
+			
 			for(Thread i : threadHandle){
 				i.join();
 				System.out.println("Hilo: " + i.getName() + " ha terminado...");
@@ -88,9 +78,6 @@ public class EjemploFunc1 {
 			} catch(BrokenBarrierException e) {
 				System.out.println("Hilo: " + this.getName() + ". Algunos de los hilos ha sido interumpido. Rompiendo la barrera y haciendo que continuen.");
 			}
-			
-			//Guardo los hilos que ya han acabado, para saber cual esta todavia
-			terminado[Integer.parseInt(this.getName())] = true;
 		}
 	}
 	
@@ -156,9 +143,10 @@ public class EjemploFunc1 {
 		
 		//Instacio los hilos
 		for(int i = 0; i < numHilos; i++)
-			threadHandle.add(new hilo_carrera(i));
+			threadHandle.add(new hilo_carrera(i+1));
 		
 		//Creo un cyclicBarrier para esperar a que todos los hilos llegen a un punto comun
+		//Y asi empiece en condiciones iguales
 		inicio = new CyclicBarrier(numHilos, new Runnable() {
 			public void run() {
 				System.out.println("\nTodos los hilos han llegado a la linea de inicio. Iniciando carrera");
