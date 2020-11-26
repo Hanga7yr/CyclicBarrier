@@ -27,7 +27,7 @@ public class EjemploFunc1 {
 		
 		//Si el programa no ha terminado a los 10 segundos, interumpimos uno de los hilos
 		//Haciendo que se rompa la barrera, permitiendo que continuen los hilos.
-		(new Thread() {
+		Thread t = new Thread() {
 			public void run() {
 				try {
 					sleep(10000);
@@ -40,7 +40,9 @@ public class EjemploFunc1 {
 					if(terminado[i] == false)
 						threadHandle.get(i).interrupt();
 			}
-		}).start();
+		};
+		t.start();
+		
 		
 		//Se espera un tiempo a que acaben los hilos para insertar un espaciado aestetico
 		try {
@@ -50,6 +52,7 @@ public class EjemploFunc1 {
 		}
 		System.out.println();
 		
+		
 		//Esperamos a que todos terminen antes de cerrar el hilo principal
 		//Lo que ocurre una vez se muestra el error de cyclicBarrier
 		try {
@@ -58,10 +61,11 @@ public class EjemploFunc1 {
 				i.join();
 				System.out.println("Hilo: " + i.getName() + " ha terminado...");
 			}
+
+			t.join();
 		} catch (InterruptedException e) {
 			System.out.println(e.getMessage());
 		}
-
 		
 		System.out.println("Principal Termina");
 	}
@@ -85,9 +89,102 @@ public class EjemploFunc1 {
 				System.out.println("Hilo: " + this.getName() + ". Algunos de los hilos ha sido interumpido. Rompiendo la barrera y haciendo que continuen.");
 			}
 			
-
 			//Guardo los hilos que ya han acabado, para saber cual esta todavia
 			terminado[Integer.parseInt(this.getName())] = true;
 		}
+	}
+	
+	public class hilo_carrera extends Thread{
+		public hilo_carrera(int i) {
+			this.setName(i + "");
+		}
+		
+		@Override
+		public void run() {
+			System.out.println("Hilo " + this.getName() + ": Ha entrado a la carrera");
+			
+			try {
+				//Espero a que todos los hilos esten en un punto comun
+				inicio.await();
+				
+				//Espero una cantidad de tiempo random
+				//Al llegar a una etapa, se muestra su mensaje
+				//Si se llega a la etapa final el primero, finalizo la carrera.
+				for(int i = 0; i < etapas.length; i++) {
+					Thread.sleep((long) (Math.random()*1000));
+					int posicion = etapas[i].await();
+				}
+				
+				if(fin.await() == 0)
+					System.out.println("Hilo " + this.getName() + ": He ganado la carrera!!");
+			} catch (InterruptedException | BrokenBarrierException e) {
+				System.out.println("Hilo " + this.getName() + ": Alguien ha llegado al final. Me rindo");
+			}
+		}
+	}
+	
+	public class mensaje_etapa implements Runnable{
+		int etapa = 0;
+		int nHilos = 0;
+		int llegados = 0;
+		
+		public mensaje_etapa(int i, int numHilos) {
+			etapa = i;
+			nHilos = numHilos;
+		}
+		
+		public void run() {
+			//Compruebo si se ha llegado en una posición determinada y muestro un mensaje apropiado
+			if(llegados++ == 0)
+				System.out.println("Hilo " + Thread.currentThread().getName() + ": He llegado primero a la etapa " + etapa);
+			else if(llegados == nHilos)
+				System.out.println("Hilo " + Thread.currentThread().getName() + ": He llegado último a la etapa " + etapa);
+		}
+		
+	}
+	
+	static CyclicBarrier[] etapas = null;
+	static CyclicBarrier inicio = null;
+	static CyclicBarrier fin = null;
+	public void carreaHilos(int numHilos, int nEtapas){
+		ArrayList<Thread> threadHandle = new ArrayList<Thread>();
+
+		//Creo las etapas y le añado un Runnable a realizar cada vez que la barrera se rompa.
+		etapas = new CyclicBarrier[nEtapas];
+		for(int i = 0; i < etapas.length; i++)
+			etapas[i] = new CyclicBarrier(1, new mensaje_etapa(i, numHilos));
+		
+		//Instacio los hilos
+		for(int i = 0; i < numHilos; i++)
+			threadHandle.add(new hilo_carrera(i));
+		
+		//Creo un cyclicBarrier para esperar a que todos los hilos llegen a un punto comun
+		inicio = new CyclicBarrier(numHilos, new Runnable() {
+			public void run() {
+				System.out.println("\nTodos los hilos han llegado a la linea de inicio. Iniciando carrera");
+			}
+		});
+		
+		//Barrera final que mostrará el final de la carrera
+		//Tambien hará que el resto de los hilos terminen a la fuerza para terminar la carrera
+		fin = new CyclicBarrier(1, new Runnable() {
+			public void run() {
+				System.out.println("\nAlguien ha llegado a la meta. Finalizando carrera");
+				
+				//Finalizo a la fuerza el resto de hilos. Ya que ha acabado la carrera
+				for(Thread i : threadHandle)
+					i.interrupt();
+			}
+		});
+
+		//Inicio los hilos, al iniciarlos secuencialmente, siempre habra uno que empiece antes que otro.
+		for(Thread i : threadHandle)
+			i.start();
+		
+		//Esperamos a que todos acaben para que el principal acaba siempre despues que los hilos hijo
+		for(Thread i : threadHandle)
+			try {
+				i.join();
+			} catch (InterruptedException e) {}
 	}
 }
