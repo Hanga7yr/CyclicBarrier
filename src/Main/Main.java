@@ -10,9 +10,9 @@ public class Main {
 		ejemplo.ejemploEspera(5, 5);
 		*/
 		
-		/*
+		
 		ejemplo.ejemploEspera(9, 5);
-		*/
+		
 		
 		/*
 		ejemplo.ejemploEspera(5, 10);

@@ -1,5 +1,6 @@
 package ManuelM;
 
+import java.lang.Thread.State;
 import java.util.ArrayList;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -29,7 +30,7 @@ public class EjemploFunc1 {
 		Thread t = new Thread() {
 			public void run() {
 				try {
-					sleep(10000);
+					Thread.currentThread().sleep(10000);
 					System.out.println("\nTiempo de Espera agotado");
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -41,18 +42,25 @@ public class EjemploFunc1 {
 		};
 		t.start();
 		
-		
-		
 		//Esperamos a que todos terminen antes de cerrar el hilo principal
 		//Lo que ocurre una vez se muestra el error de cyclicBarrier
 		try {
-			
-			for(Thread i : threadHandle){
-				i.join();
-				System.out.println("Hilo: " + i.getName() + " ha terminado...");
+			//Mostramos los hilos que han terminado
+			//Se espera un poco por si acaso esta escribiendo algo en pantalla pero esta a punto de morir
+			for(int i = 0; i < threadHandle.size(); i++){
+				threadHandle.get(i).join(10);
+				System.out.println("Hilo: " + threadHandle.get(i).getName() + " ha terminado...");
+				
+				threadHandle.remove(i);
 			}
 
+			//Esperamos a que el temporizador acabe
 			t.join();
+
+			for(int i = 0; i < threadHandle.size(); i++){
+				threadHandle.get(i).join();
+				System.out.println("Hilo: " + threadHandle.get(i).getName() + " ha terminado...");
+			}
 		} catch (InterruptedException e) {
 			System.out.println(e.getMessage());
 		}
